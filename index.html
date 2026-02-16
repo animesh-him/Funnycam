@@ -1,197 +1,234 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>Baby Girl Cute Cam</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced AR Cam</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:Poppins}
 body{
-height:100vh;
+margin:0;
 overflow:hidden;
+height:100vh;
 display:flex;
 flex-direction:column;
-background:linear-gradient(135deg,#ff9a9e,#fad0c4,#fad0c4);
+background:linear-gradient(135deg,#ff9ad5,#c774ff);
+font-family:sans-serif;
 }
 
-header{
+h2{
 text-align:center;
-padding:8px;
-font-weight:800;
-font-size:18px;
-background:linear-gradient(90deg,#ff00cc,#ff66cc);
--webkit-background-clip:text;
--webkit-text-fill-color:transparent;
+margin:4px;
+color:white;
 }
 
-#cameraBox{
+#container{
 position:relative;
-flex:1;
-display:flex;
-justify-content:center;
-align-items:center;
-overflow:hidden;
+height:60vh;
 }
 
 video,canvas{
 position:absolute;
-max-width:100%;
-max-height:100%;
-border-radius:15px;
+width:100%;
+height:100%;
+object-fit:cover;
 }
 
 .controls{
-background:rgba(255,255,255,0.2);
-backdrop-filter:blur(8px);
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:6px;
 padding:6px;
-display:flex;
-flex-direction:column;
-gap:6px;
-}
-
-.effects{
-display:flex;
-overflow-x:auto;
-gap:6px;
 }
 
 button{
-padding:6px 10px;
+padding:8px;
 border:none;
 border-radius:20px;
-background:linear-gradient(90deg,#ff6ec4,#7873f5);
+background:linear-gradient(45deg,#ff4fd8,#7a5cff);
 color:white;
 font-size:12px;
-font-weight:600;
-white-space:nowrap;
-cursor:pointer;
 }
 
-footer{
+.footer{
 text-align:center;
-font-style:italic;
 font-size:12px;
+color:white;
 padding:4px;
-opacity:0.8;
 }
 </style>
 </head>
 
 <body>
 
-<header>Baby Girl Cute Cam</header>
+<h2>Advanced AR Cam</h2>
 
-<div id="cameraBox">
+<div id="container">
 <video id="video" autoplay playsinline></video>
 <canvas id="canvas"></canvas>
 </div>
 
 <div class="controls">
-<div class="effects" id="effects"></div>
+<button onclick="setEffect('crown')">Crown</button>
+<button onclick="setEffect('bunny')">Bunny</button>
+<button onclick="setEffect('mask')">Full Mask</button>
+<button onclick="setEffect('swap')">Face Swap</button>
 <button onclick="capture()">Capture</button>
+<button onclick="shareImage()">Share</button>
+<button onclick="resetEffect()">Reset</button>
 </div>
 
-<footer><i>Created by AnimeS</i></footer>
+<div class="footer">Created by Animesh</div>
 
 <script>
 const video=document.getElementById("video");
 const canvas=document.getElementById("canvas");
 const ctx=canvas.getContext("2d");
+
 let currentEffect=null;
+let capturedBlob=null;
 
-const effects=[
-["Princess 👑","crown"],
-["Hearts 💕","hearts"],
-["Sparkle ✨","sparkle"],
-["Rainbow 🌈","rainbow"],
-["Blush 😊","blush"],
-["Glitter ✨","glitter"],
-["Butterfly 🦋","butterfly"],
-["Flowers 🌸","flowers"],
-["Candy 🍭","candy"],
-["Unicorn 🦄","unicorn"],
-["Stars ⭐","stars"],
-["Angel 😇","angel"],
-["Neon Frame 💖","frame"],
-["Cartoon Eyes 👀","eyes"],
-["Wink 😉","wink"],
-["Emoji 😂","emoji"],
-["Fairy Dust ✨","fairy"],
-["Golden 👑","gold"],
-["Diamond 💎","diamond"],
-["Love Storm 💘","love"]
-];
+navigator.mediaDevices.getUserMedia({video:{width:640,height:480}})
+.then(stream=>{video.srcObject=stream});
 
-const effectsDiv=document.getElementById("effects");
-effects.forEach(e=>{
-const b=document.createElement("button");
-b.innerText=e[0];
-b.onclick=()=>currentEffect=e[1];
-effectsDiv.appendChild(b);
+const faceMesh=new FaceMesh({
+locateFile:(file)=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
 });
 
-navigator.mediaDevices.getUserMedia({video:true})
-.then(stream=>{
-video.srcObject=stream;
-})
-.catch(()=>{
-alert("Camera access denied");
+faceMesh.setOptions({
+maxNumFaces:2,
+refineLandmarks:true,
+minDetectionConfidence:0.5,
+minTrackingConfidence:0.5
 });
 
-video.onloadedmetadata=()=>{
+faceMesh.onResults(results=>{
 canvas.width=video.videoWidth;
 canvas.height=video.videoHeight;
-render();
-};
 
-function render(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
 ctx.drawImage(video,0,0,canvas.width,canvas.height);
 
-if(currentEffect){
-ctx.font="60px serif";
-ctx.textAlign="center";
-ctx.textBaseline="middle";
+if(!results.multiFaceLandmarks) return;
 
-if(currentEffect==="crown") ctx.fillText("👑",canvas.width/2,80);
-if(currentEffect==="hearts") ctx.fillText("💕",canvas.width/2,80);
-if(currentEffect==="sparkle") ctx.fillText("✨",canvas.width/2,80);
-if(currentEffect==="rainbow") ctx.fillText("🌈",canvas.width/2,80);
-if(currentEffect==="blush") ctx.fillText("😊",canvas.width/2,canvas.height/2);
-if(currentEffect==="glitter") ctx.fillText("✨✨",canvas.width/2,80);
-if(currentEffect==="butterfly") ctx.fillText("🦋",canvas.width/2,80);
-if(currentEffect==="flowers") ctx.fillText("🌸🌸",canvas.width/2,80);
-if(currentEffect==="candy") ctx.fillText("🍭",canvas.width/2,80);
-if(currentEffect==="unicorn") ctx.fillText("🦄",canvas.width/2,80);
-if(currentEffect==="stars") ctx.fillText("⭐✨",canvas.width/2,80);
-if(currentEffect==="angel") ctx.fillText("😇",canvas.width/2,80);
-if(currentEffect==="frame"){
-ctx.strokeStyle="pink";
-ctx.lineWidth=20;
-ctx.strokeRect(0,0,canvas.width,canvas.height);
+if(currentEffect==="swap" && results.multiFaceLandmarks.length===2){
+faceSwap(results.multiFaceLandmarks);
+}else{
+results.multiFaceLandmarks.forEach(landmarks=>{
+if(currentEffect==="crown") drawCrown(landmarks);
+if(currentEffect==="bunny") drawBunny(landmarks);
+if(currentEffect==="mask") drawMask(landmarks);
+});
 }
-if(currentEffect==="eyes") ctx.fillText("👀",canvas.width/2,canvas.height/2);
-if(currentEffect==="wink") ctx.fillText("😉",canvas.width/2,canvas.height/2);
-if(currentEffect==="emoji") ctx.fillText("😂😂",canvas.width/2,80);
-if(currentEffect==="fairy") ctx.fillText("✨🧚",canvas.width/2,80);
-if(currentEffect==="gold"){
-ctx.strokeStyle="gold";
-ctx.lineWidth=15;
-ctx.strokeRect(0,0,canvas.width,canvas.height);
-}
-if(currentEffect==="diamond") ctx.fillText("💎✨",canvas.width/2,80);
-if(currentEffect==="love") ctx.fillText("💘💘",canvas.width/2,80);
+});
+
+const camera=new Camera(video,{
+onFrame:async()=>{await faceMesh.send({image:video});},
+width:640,
+height:480
+});
+camera.start();
+
+function setEffect(e){currentEffect=e;}
+function resetEffect(){currentEffect=null;}
+
+function getHeadData(landmarks){
+const leftEye=landmarks[33];
+const rightEye=landmarks[263];
+
+const dx=(rightEye.x-leftEye.x)*canvas.width;
+const dy=(rightEye.y-leftEye.y)*canvas.height;
+
+const angle=Math.atan2(dy,dx);
+const width=Math.sqrt(dx*dx+dy*dy)*2.5;
+
+const centerX=(leftEye.x+rightEye.x)/2*canvas.width;
+const centerY=(leftEye.y+rightEye.y)/2*canvas.height;
+
+return {centerX,centerY,width,angle};
 }
 
-requestAnimationFrame(render);
+function drawCrown(landmarks){
+const {centerX,centerY,width,angle}=getHeadData(landmarks);
+
+ctx.save();
+ctx.translate(centerX,centerY-width*0.6);
+ctx.rotate(angle);
+ctx.fillStyle="gold";
+ctx.beginPath();
+ctx.moveTo(-width/2,0);
+ctx.lineTo(-width/4,-width/2);
+ctx.lineTo(0,0);
+ctx.lineTo(width/4,-width/2);
+ctx.lineTo(width/2,0);
+ctx.closePath();
+ctx.fill();
+ctx.restore();
+}
+
+function drawBunny(landmarks){
+const {centerX,centerY,width,angle}=getHeadData(landmarks);
+
+ctx.save();
+ctx.translate(centerX,centerY-width*0.9);
+ctx.rotate(angle);
+ctx.fillStyle="white";
+ctx.fillRect(-width/4,-width,width/6,width);
+ctx.fillRect(width/8,-width,width/6,width);
+ctx.restore();
+}
+
+function drawMask(landmarks){
+const {centerX,centerY,width,angle}=getHeadData(landmarks);
+
+ctx.save();
+ctx.translate(centerX,centerY);
+ctx.rotate(angle);
+ctx.fillStyle="rgba(255,105,180,0.4)";
+ctx.beginPath();
+ctx.arc(0,0,width/1.5,0,Math.PI*2);
+ctx.fill();
+ctx.restore();
+}
+
+function faceSwap(faces){
+const face1=faces[0];
+const face2=faces[1];
+
+const p1=getHeadData(face1);
+const p2=getHeadData(face2);
+
+ctx.save();
+ctx.globalAlpha=0.7;
+ctx.drawImage(video,
+p1.centerX-p1.width/2,p1.centerY-p1.width/2,p1.width,p1.width,
+p2.centerX-p2.width/2,p2.centerY-p2.width/2,p2.width,p2.width);
+ctx.restore();
 }
 
 function capture(){
-const link=document.createElement("a");
-link.download="cute_cam.png";
-link.href=canvas.toDataURL();
-link.click();
+canvas.toBlob(blob=>{
+capturedBlob=blob;
+alert("Captured!");
+});
+}
+
+async function shareImage(){
+if(!capturedBlob){alert("Capture first!");return;}
+
+const file=new File([capturedBlob],"arcam.png",{type:"image/png"});
+
+if(navigator.share){
+await navigator.share({
+files:[file],
+title:"Advanced AR Cam",
+text:"Look at this cool AR effect!"
+});
+}else{
+alert("Sharing not supported on this device");
+}
 }
 </script>
 
