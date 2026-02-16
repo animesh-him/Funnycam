@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Neon Funny Cam</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif}
+body{
+background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+color:white;
+overflow:hidden;
+height:100vh;
+display:flex;
+flex-direction:column;
+}
+
+header{
+padding:10px;
+text-align:center;
+font-weight:800;
+font-size:20px;
+background:linear-gradient(90deg,#ff00cc,#3333ff);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+#camera-container{
+position:relative;
+flex:1;
+display:flex;
+justify-content:center;
+align-items:center;
+overflow:hidden;
+}
+
+video, canvas{
+position:absolute;
+max-width:100%;
+max-height:100%;
+border-radius:15px;
+}
+
+.controls{
+background:rgba(0,0,0,0.6);
+backdrop-filter:blur(10px);
+padding:10px;
+display:flex;
+flex-direction:column;
+gap:8px;
+overflow-y:auto;
+max-height:40vh;
+}
+
+.category-tabs{
+display:flex;
+overflow-x:auto;
+gap:6px;
+}
+
+.tab{
+flex:0 0 auto;
+padding:6px 10px;
+border-radius:20px;
+background:linear-gradient(90deg,#ff00cc,#00ffff);
+color:black;
+font-weight:600;
+font-size:12px;
+cursor:pointer;
+}
+
+.effects{
+display:flex;
+flex-wrap:wrap;
+gap:6px;
+justify-content:center;
+}
+
+.effect-btn{
+padding:6px 8px;
+border-radius:12px;
+font-size:11px;
+font-weight:600;
+background:linear-gradient(90deg,#ff512f,#dd2476);
+border:none;
+color:white;
+cursor:pointer;
+}
+
+.bottom-controls{
+display:flex;
+justify-content:space-around;
+padding-top:6px;
+}
+
+button{
+padding:8px 14px;
+border-radius:20px;
+border:none;
+font-weight:600;
+background:linear-gradient(90deg,#00c6ff,#0072ff);
+color:white;
+cursor:pointer;
+}
+
+#error{
+color:red;
+text-align:center;
+font-size:13px;
+padding:4px;
+}
+
+#caption{
+text-align:center;
+padding:4px;
+font-size:13px;
+min-height:18px;
+}
+
+footer{
+text-align:center;
+font-style:italic;
+font-size:12px;
+padding:6px;
+opacity:0.7;
+}
+</style>
+</head>
+
+<body>
+
+<header>Neon Funny Cam</header>
+
+<div id="camera-container">
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas"></canvas>
+</div>
+
+<div id="caption"></div>
+<div id="error"></div>
+
+<div class="controls">
+
+<div class="category-tabs" id="categories"></div>
+<div class="effects" id="effects"></div>
+
+<div class="bottom-controls">
+<button onclick="switchCamera()">Switch</button>
+<button onclick="capture()">Capture</button>
+<button onclick="resetEffect()">Reset</button>
+</div>
+
+</div>
+
+<footer>Created by AnimeS</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+
+<script>
+const video=document.getElementById('video');
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+const caption=document.getElementById('caption');
+const errorDiv=document.getElementById('error');
+
+let currentStream=null;
+let facingMode="user";
+let currentEffect=null;
+let faceMesh;
+
+const categories={
+"Baby Girl":[
+["Princess Sparkle","princess"],
+["Tiny Drama Queen","cry"],
+["Angel Glow","glow"],
+["Giggle Explosion","laugh"]
+],
+"Baby Boy":[
+["Mini Hero","hero"],
+["Milk Monster","milk"],
+["Tiny Hulk","green"],
+["Baby Rockstar","rock"]
+],
+"Women":[
+["Glam Queen","glam"],
+["Luxury Diva","lux"],
+["Laugh Burst","laugh"],
+["Neon Goddess","neon"]
+],
+"Men":[
+["Beast Mode","contrast"],
+["Rich CEO","lux"],
+["Old Grandpa","gray"],
+["Cartoon Villain","dark"]
+],
+"Unisex":[
+["Alien Mode","alien"],
+["Big Head","big"],
+["Chipmunk","puff"],
+["Emoji Storm","emoji"],
+["Rich Filter","lux"],
+["Ultra Neon","neon"]
+]
+};
+
+function initCategories(){
+const catDiv=document.getElementById('categories');
+const effDiv=document.getElementById('effects');
+Object.keys(categories).forEach(cat=>{
+const tab=document.createElement('div');
+tab.className='tab';
+tab.innerText=cat;
+tab.onclick=()=>{
+effDiv.innerHTML='';
+categories[cat].forEach(e=>{
+const btn=document.createElement('button');
+btn.className='effect-btn';
+btn.innerText=e[0];
+btn.onclick=()=>applyEffect(e[1],e[0]);
+effDiv.appendChild(btn);
+});
+};
+catDiv.appendChild(tab);
+});
+}
+
+function applyEffect(effect,label){
+currentEffect=effect;
+caption.innerText=label;
+}
+
+function resetEffect(){
+currentEffect=null;
+caption.innerText="";
+}
+
+async function startCamera(){
+try{
+if(currentStream){
+currentStream.getTracks().forEach(t=>t.stop());
+}
+currentStream=await navigator.mediaDevices.getUserMedia({
+video:{facingMode:facingMode,width:{ideal:1280},height:{ideal:720}}
+});
+video.srcObject=currentStream;
+}catch(err){
+errorDiv.innerText="Camera access denied or unsupported.";
+}
+}
+
+function switchCamera(){
+facingMode=(facingMode==="user")?"environment":"user";
+startCamera();
+}
+
+function capture(){
+const link=document.createElement('a');
+link.download="funnycam.png";
+link.href=canvas.toDataURL();
+link.click();
+}
+
+function enhanceFrame(){
+ctx.drawImage(video,0,0,canvas.width,canvas.height);
+
+if(currentEffect){
+ctx.globalCompositeOperation="overlay";
+if(currentEffect==="glow"){ctx.filter="brightness(1.2) blur(1px)";}
+if(currentEffect==="lux"){ctx.filter="contrast(1.3) saturate(1.3)";}
+if(currentEffect==="green"){ctx.filter="hue-rotate(90deg)";}
+if(currentEffect==="gray"){ctx.filter="grayscale(1)";}
+if(currentEffect==="dark"){ctx.filter="contrast(1.4) brightness(0.8)";}
+if(currentEffect==="neon"){ctx.filter="contrast(1.5) saturate(2)";}
+if(currentEffect==="alien"){ctx.filter="hue-rotate(140deg)";}
+if(currentEffect==="contrast"){ctx.filter="contrast(1.6)";}
+if(currentEffect==="puff"){ctx.filter="blur(2px)";}
+if(currentEffect==="big"){ctx.filter="contrast(1.2)";}
+if(currentEffect==="emoji"){
+ctx.font="40px serif";
+ctx.fillText("😂",50,80);
+ctx.fillText("🔥",200,150);
+}
+ctx.drawImage(video,0,0,canvas.width,canvas.height);
+ctx.filter="none";
+ctx.globalCompositeOperation="source-over";
+}
+
+requestAnimationFrame(enhanceFrame);
+}
+
+video.addEventListener('loadedmetadata',()=>{
+canvas.width=video.videoWidth;
+canvas.height=video.videoHeight;
+enhanceFrame();
+});
+
+initCategories();
+startCamera();
+</script>
+
+</body>
+</html>
